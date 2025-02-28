@@ -1,6 +1,6 @@
 import asyncio
 import json
-from websockets.server import serve
+import websockets.server
 from dataclasses import asdict
 from browser_use.browser.browser import Browser, BrowserConfig
 from browser_use.controller.browser_controller import BrowserController
@@ -12,11 +12,11 @@ class BrowserServer:
         
         config = BrowserConfig(headless=False)
         self.browser = Browser(config)
-        self.controller = BrowserController(self.browser)
+        self.controller = BrowserController()
         self.contexts = {}  # Store browser contexts by session ID
         
     async def start(self):
-        async with serve(self.handle_connection, self.host, self.port):
+        async with websockets.server.serve(self.handle_connection, self.host, self.port):
             print(f"Browser server running on ws://{self.host}:{self.port}")
             await asyncio.Future()  # run forever
 
@@ -38,6 +38,7 @@ class BrowserServer:
             
     async def execute_command(self, command, session_id):
         try:
+            print(f"Executing command: {command}")
             context = self.contexts.get(session_id)
             if not context:
                 return {"status": "error", "message": "No browser context available"}
@@ -57,7 +58,7 @@ class BrowserServer:
             elif command["type"] == "execute_action":
                 if "action" not in command:
                     return {"status": "error", "message": "No action specified"}
-                result = await self.controller.execute_action(
+                result = await self.controller.act(
                     context,
                     command["action"]
                 )
@@ -80,4 +81,4 @@ class BrowserServer:
 
 if __name__ == "__main__":
     server = BrowserServer()
-    asyncio.run(server.start())
+    asyncio.run(server.start()) 
